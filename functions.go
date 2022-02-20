@@ -14,3 +14,11 @@ func alreadyloggedin(w http.ResponseWriter, r *http.Request) bool {
 	_, ok := dbusers[un]
 	return ok
 }
+
+func getUser(w http.ResponseWriter, r *http.Request) users {
+	c, _ := r.Cookie("sessions")
+
+	uID := dbsessions[c.Value]
+	user := dbusers[uID]
+	return user
+}

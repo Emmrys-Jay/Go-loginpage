@@ -6,13 +6,13 @@
     </header>
 
     <body>
-        <p><h1> Welcome {{.fname}}</h1></p>
-        <p>
-            Your Full Name: {{.fname .lname}} <br>
-            Your Email:  {{.email}} <br>
-            Your User Name: {{.uname}}
-        </p>
-        <h5><a href="/suggest">Get your suggestion</a></h5><br>
+        <p><h1> Welcome {{.Fname}}</h1></p>
+
+            Your Full Name: {{.Fname}} {{.Lname}} <br>
+            Your Email: {{.Email}}  <br>
+            Your User Name: {{.Uname}}
+        
+        <h5><a href="/suggest">Get your suggestion</a></h5>
         <h5><a href="/logout">Sign Out</a></h5>
     </body>
 </html>

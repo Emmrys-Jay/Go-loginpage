@@ -2,6 +2,7 @@ package main
 
 import (
 	"html/template"
+	"io"
 	"net/http"
 
 	uuid "github.com/satori/go.uuid"
@@ -10,11 +11,11 @@ import (
 var tpl *template.Template
 
 type users struct {
-	fname    string
-	lname    string
-	email    string
-	uname    string
-	password string
+	Fname    string
+	Lname    string
+	Email    string
+	Uname    string
+	Password string
 }
 
 var dbsessions = make(map[string]string) //cookie value/UUID to user ID
@@ -35,10 +36,49 @@ func main() {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	tpl.ExecuteTemplate(w, "index.gohtml", nil)
+	if !alreadyloggedin(w, r) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	user := getUser(w, r)
+
+	tpl.ExecuteTemplate(w, "index.gohtml", user)
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
+	if alreadyloggedin(w, r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+
+	if r.Method == http.MethodPost {
+		u := r.FormValue("uname")
+		p := r.FormValue("psword")
+
+		if user, ok := dbusers[u]; ok {
+			if p == user.Password {
+
+				//create new session
+				uuID := uuid.NewV4()
+				http.SetCookie(w, &http.Cookie{
+					Name:  "sessions",
+					Value: uuID.String(),
+				})
+				dbsessions[uuID.String()] = u
+
+				//redirect to dashboard
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+				return
+			} else {
+				w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+				io.WriteString(w, `<h5>Invalid Username/Password</h5><a href="/login"> Sign In Again </a><br> <a href="/signup"> Sign Up </a>`)
+				return
+			}
+		} else {
+			w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+			io.WriteString(w, `<h5>Invalid Username/Password</h5><a href="/login"> Sign In Again </a><br> <a href="/signup"> Sign Up </a>`)
+			return
+		}
+	}
 	tpl.ExecuteTemplate(w, "login.gohtml", nil)
 }
 
@@ -48,8 +88,6 @@ func signup(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-
-	//tpl.ExecuteTemplate(w, "signup.gohtml", nil)
 
 	//accept form input
 	if r.Method == http.MethodPost {
@@ -77,15 +115,30 @@ func signup(w http.ResponseWriter, r *http.Request) {
 		dbusers[u] = users{f, l, e, u, p}
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
 	}
 
 	tpl.ExecuteTemplate(w, "signup.gohtml", nil)
 }
 
 func suggest(w http.ResponseWriter, r *http.Request) {
-	tpl.ExecuteTemplate(w, "suggest.gohtml", nil)
+	if !alreadyloggedin(w, r) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}
+	user := getUser(w, r)
+
+	tpl.ExecuteTemplate(w, "suggest.gohtml", user)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
+	if !alreadyloggedin(w, r) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	//get uuid value and delete it's field
+	c, _ := r.Cookie("sessions")
+	delete(dbsessions, c.Value)
+	c.MaxAge = -1 //delete cookie
 	tpl.ExecuteTemplate(w, "logout.gohtml", nil)
 }
